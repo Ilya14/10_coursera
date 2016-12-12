@@ -22,14 +22,14 @@ def get_courses_list(courses_count):
 
 def get_course_info(course_url):
     def get_element_text(elem):
-        return elem.text if elem else 'No information'
+        return elem.text if elem is not None else None
 
     response = requests.get(course_url)
     soup = BeautifulSoup(response.text, 'lxml')
 
     course_info = {}
     json_elem = soup.find('script', {'type': 'application/ld+json'})
-    if json_elem:
+    if json_elem is not None:
         json_course_data = json.loads(json_elem.text)
         has_course_instance = json_course_data['hasCourseInstance'][0]
         if 'startDate' in has_course_instance and 'endDate' in has_course_instance:
@@ -39,9 +39,9 @@ def get_course_info(course_url):
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
             course_info['weeks count'] = (end_date - start_date).days / 7 - 1
         else:
-            course_info['start date'] = course_info['weeks count'] = 'No information'
+            course_info['start date'] = course_info['weeks count'] = None
     else:
-        course_info['start date'] = course_info['weeks count'] = 'No information'
+        course_info['start date'] = course_info['weeks count'] = None
 
     course_info['url'] = course_url
     course_info['title'] = get_element_text(soup.find('h1', {'class': 'course-name-text'}))
@@ -57,12 +57,12 @@ def output_courses_info_to_xlsx(filepath, courses_info):
 
     str_list = ['title', 'start date', 'weeks count', 'language', 'rating', 'url']
 
-    for row in range(len(courses_info) + 1):
-        for col in range(len(str_list)):
-            if row == 0:
-                ws.cell(row=row+1, column=col+1, value=str_list[col].upper())
-            else:
-                ws.cell(row=row+1, column=col+1, value=courses_info[row - 1][str_list[col]])
+    for row_num, course_info in enumerate(courses_info):
+        for col_num, col_name in enumerate(str_list):
+            if row_num == 0:
+                ws.cell(row=row_num+1, column=col_num+1, value=col_name.upper())
+            cell_value = course_info[col_name] if course_info[col_name] is not None else 'No information'
+            ws.cell(row=row_num+2, column=col_num+1, value=cell_value)
 
     wb.save(filepath)
     print('Courses information is saved to the file \"{0}\"!'.format(filepath))
